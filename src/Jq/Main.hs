@@ -27,6 +27,9 @@ processIO c s = do
 
 getInputs :: IO ([String], String)
 getInputs = do
+  -- echo 'null' | stack run '.'
+  -- '.'    -> args
+  -- 'null' -> toparse
   args <- getArgs
   toparse <- readInput
   return $ (args, toparse)
