@@ -1,10 +1,9 @@
 module Jq.Filters where
 
+import Jq.Json (JSON)
 data Filter = Identity
-  -- | Identifier String
-  -- | OptIdentifier String
-  -- | Index Int
-  -- | OptIndex Int
+  | Identifier String
+  | OptIdentifier String
   | Slice (Int, Int)
   | OptSlice (Int, Int)
   | Iterator
@@ -13,13 +12,16 @@ data Filter = Identity
   | OptIteratorJArray [Int]
   | IteratorJObject [String]
   | OptIteratorJObject [String]
+  | CommaOperator Filter Filter
+  | PipeOperator Filter Filter
+  | ValueCons JSON
+  | ValueConsArray [Filter]
+  | ValueConsObject [(String, Filter)]
 
 instance Show Filter where
   show Identity                = "."
-  -- show (Identifier i)          = show i
-  -- show (OptIdentifier i)       = show i
-  -- show (Index i)               = show i
-  -- show (OptIndex i)            = show i
+  show (Identifier i)          = show i
+  show (OptIdentifier i)       = show i
   show (Slice (l, r))          = show l ++ ":" ++ show r
   show (OptSlice (l, r))       = show l ++ ":" ++ show r
   show Iterator                = show ".[]"
@@ -28,5 +30,10 @@ instance Show Filter where
   show (OptIteratorJArray is)  = show ".[" ++ show is ++ "]"
   show (IteratorJObject is)    = show ".[" ++ show is ++ "]"
   show (OptIteratorJObject is) = show ".[" ++ show is ++ "]"
+  show (CommaOperator l r)     = show l ++ show r
+  show (PipeOperator l r)      = show l ++ show r
+  show (ValueCons j)           = show j
+  show (ValueConsArray fs)     = show fs
+  show (ValueConsObject fs)    = show fs
 
 data Config = ConfigC {filters :: Filter}

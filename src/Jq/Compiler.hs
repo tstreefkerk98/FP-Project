@@ -7,34 +7,28 @@ import           Jq.Json
 type JProgram a = JSON -> Either String a
 
 compile :: Filter -> JProgram [JSON]
-compile Identity             inp = return [inp]
--- compile (Identifier i)       obj = compileIdentifier i obj False
--- compile (OptIdentifier i)    obj = compileIdentifier i obj True
--- compile (Index i)            obj = compileIndex i obj False
--- compile (OptIndex i)         obj = compileIndex i obj True
-compile (Slice (l, r))       obj = compileSlice (l, r) obj False
-compile (OptSlice (l, r))    obj = compileSlice (l, r) obj True
-compile Iterator             obj = compileIterator obj False
-compile OptIterator          obj = compileIterator obj True
-compile (IteratorJArray is)  obj = compileIteratorJArray is obj False
+compile Identity                obj = return [obj]
+compile (Identifier i)          obj = compileIdentifier i obj False 
+compile (OptIdentifier i)       obj = compileIdentifier i obj True
+compile (Slice (l, r))          obj = compileSlice (l, r) obj False
+compile (OptSlice (l, r))       obj = compileSlice (l, r) obj True
+compile Iterator                obj = compileIterator obj False
+compile OptIterator             obj = compileIterator obj True
+compile (IteratorJArray is)     obj = compileIteratorJArray is obj False
 compile (OptIteratorJArray is)  obj = compileIteratorJArray is obj True
-compile (IteratorJObject is) obj    = compileIteratorJObject is obj False
+compile (IteratorJObject is)    obj = compileIteratorJObject is obj False
 compile (OptIteratorJObject is) obj = compileIteratorJObject is obj True
--- compile _ _ = return []
+compile (CommaOperator l r)     obj = compileCommaOperator (CommaOperator l r) obj
+compile (PipeOperator l r)      obj = compilePipeOperator (PipeOperator l r) [obj]
+compile (ValueCons json)        _   = compileValueCons json
+compile (ValueConsArray fs)     obj = compileValueConsArray fs obj
+compile (ValueConsObject fs)    obj = compileValueConsObject fs obj
 
 compileIdentifier :: String -> JSON -> Bool -> Either String [JSON]
 compileIdentifier i (JObject obj) _ = if not (null f) then Right [snd (head f)] else Right [JNull]
     where f = filter ((==i).fst) obj
-compileIdentifier _ _         True  = Right []
+compileIdentifier _ _         True  = Right [JNull]
 compileIdentifier _ obj       False = Left ("Cannot apply identifier to " ++ getJqType obj)
-
--- compileIndex :: Int -> JSON -> Bool -> Either String [JSON]
--- compileIndex i (JArray ns) _
---     | i < size && -i <= size = Right [ns !! getIndex size i]
---     | otherwise              = Right [JNull]
---     where size = length ns
--- compileIndex _ _   True      = Right []
--- compileIndex _ obj False     = Left ("Cannot apply index to " ++ getJqType obj)
 
 compileSlice :: (Int, Int) -> JSON -> Bool -> Either String [JSON]
 compileSlice (l, r) (JArray ns) _ = Right [JArray (take (r' - l') (drop l' ns))]
@@ -57,18 +51,60 @@ compileIterator _           True  = Right []
 compileIterator obj         False = Left ("Cannot apply iterator to " ++ getJqType obj)
 
 compileIteratorJArray :: [Int] -> JSON -> Bool -> Either String [JSON]
-compileIteratorJArray [] (JArray ns) _ = Right (foldr (:) [] ns)
-compileIteratorJArray is (JArray ns) _ = Right (foldr (:) [] [ getValue i | i <- is] )
+compileIteratorJArray [] (JArray ns) _ = Right ns
+compileIteratorJArray is (JArray ns) _ = Right [ getValue i | i <- is ]
     where 
         size        = length ns
         getValue i' = if i' < size && -i' <= size then ns !! getIndex size i' else JNull
-compileIteratorJArray _  _       True  = Right []
-compileIteratorJArray _  obj     False = Left ("Cannot apply JArray iterator to " ++ getJqType obj)
+compileIteratorJArray is  _       True  = Right (replicate (length is) JNull)
+compileIteratorJArray _  obj      False = Left ("Cannot apply JArray iterator to " ++ getJqType obj)
 
 compileIteratorJObject :: [String] -> JSON -> Bool -> Either String [JSON]
+compileIteratorJObject [] (JObject obj) _ = Right (map snd obj)
 compileIteratorJObject is (JObject obj) _ = Right [ snd o | o <- obj , fst o `elem` is ]
-compileIteratorJObject _  _         True  = Right []
+compileIteratorJObject _  _         True  = Right [JNull]
 compileIteratorJObject _  obj       False = Left ("Cannot apply JObject iterator to " ++ getJqType obj)
+
+compileCommaOperator :: Filter -> JSON -> Either String [JSON]
+compileCommaOperator (CommaOperator l r) obj = 
+    do
+        l' <- compile l obj
+        r' <- compileCommaOperator r obj
+        return (l' ++ r')
+compileCommaOperator f                   obj = compile f obj 
+
+compilePipeOperator :: Filter -> [JSON] -> Either String [JSON]
+compilePipeOperator _                  []     = Right []
+compilePipeOperator (PipeOperator l r) (o:os) = 
+    do
+        l' <- compile l o
+        r' <- compilePipeOperator r l'
+        ts <- compilePipeOperator (PipeOperator l r) os
+        return (r' ++ ts)
+compilePipeOperator f                  (o:os) = 
+    do
+        x <- compile f o
+        xs <- compilePipeOperator f os
+        return (x ++ xs)
+
+compileValueCons :: JSON -> Either String [JSON]
+compileValueCons json = Right [json]
+
+compileValueConsArray :: [Filter] -> JSON -> Either String [JSON]
+compileValueConsArray fs obj = 
+    do 
+        is <- mapM (`compile` obj) fs
+        return [JArray (concat is)]
+
+compileValueConsObject :: [(String, Filter)] -> JSON -> Either String [JSON]
+compileValueConsObject fs obj = 
+    do
+        let ss = map fst fs
+        js <- mapM ((`compile` obj) . snd) fs
+        let xs = zip ss (concat js)
+        return [JObject xs]
+
+
 
 getIndex :: Int -> Int -> Int
 getIndex size i = if i < 0 then size + i else i

@@ -23,7 +23,7 @@ parseJString :: Parser JSON
 parseJString = 
     do
         _ <- symbol "\""
-        s <- many (alphanum <|> char ' ' <|> (char '\\' *> char '"'))
+        s <- many (alphanum <|> char ' ' <|> (char '\\' *> char '"') <|> char '\\')
         _ <- symbol "\""
         return (JString s)
 
@@ -86,14 +86,14 @@ parseJObject =
         _ <- symbol "{"
         p <- many $
             do 
-                k <- symbol "\"" *> some (alphanum <|> char ' ') <* symbol "\""
+                k <- symbol "\"" *> identifier <* symbol "\""
                 _ <- symbol ":"
                 v <- parseJSON
                 _ <- symbol ","
                 return (k, v)
         l <- some $ 
             do
-                k <- symbol "\"" *> some (alphanum <|> char ' ') <* symbol "\""
+                k <- symbol "\"" *> identifier <* symbol "\""
                 _ <- symbol ":"
                 v <- parseJSON
                 return (k, v)
@@ -101,9 +101,12 @@ parseJObject =
         return (JObject (p ++ l))
 
 parseJSON :: Parser JSON
-parseJSON = token $ parseJNull
+parseJSON = token $ parseJArray
+    <|> parseJObject
+    <|> parseSingleJSON
+
+parseSingleJSON :: Parser JSON 
+parseSingleJSON = token $ parseJNull
     <|> parseJString
     <|> parseJNumber
     <|> parseJBool
-    <|> parseJArray
-    <|> parseJObject
