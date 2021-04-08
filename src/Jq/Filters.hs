@@ -18,6 +18,8 @@ data Filter = Identity
   | ValueConsArray [Filter]
   | ValueConsObject [(Filter, Filter)]
   | Group Filter
+  | TryCatch Filter Filter
+  | EmptyCatch
 
 instance Show Filter where
   show Identity                = "."
@@ -37,5 +39,7 @@ instance Show Filter where
   show (ValueConsArray fs)     = show fs
   show (ValueConsObject fs)    = show fs
   show (Group f)               = show f
+  show (TryCatch f s)          = show f ++ show s
+  show EmptyCatch              = show "Empty catch"
 
 data Config = ConfigC {filters :: Filter}

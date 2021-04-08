@@ -24,6 +24,8 @@ compile (ValueCons json)        _   = compileValueCons json
 compile (ValueConsArray fs)     obj = compileValueConsArray fs obj
 compile (ValueConsObject fs)    obj = compileValueConsObject fs obj
 compile (Group g)               obj = compileGroup g obj
+compile (TryCatch f s)          obj = compileTryCatch f s obj
+compile EmptyCatch              _   = Right []
 
 compileIdentifier :: String -> JSON -> Bool -> Either String [JSON]
 compileIdentifier i (JObject obj) _ = if not (null f) then Right [snd (head f)] else Right [JNull]
@@ -115,6 +117,12 @@ compileValueConsObject fs obj =
                 js <- mapM ((`compile` obj) . snd) fs
                 let xs = zip ks (concat js)
                 return [JObject xs]
+
+compileTryCatch :: Filter -> Filter -> JSON -> Either String [JSON]
+compileTryCatch f s obj = 
+    case compile f obj of
+        Right v -> Right v
+        Left m  -> compile s (JString m)
 
 getKeys :: [JSON] -> [String]
 getKeys []          = []

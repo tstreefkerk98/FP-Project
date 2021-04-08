@@ -33,9 +33,22 @@ parseIterator =
     is <- some (
       do
         _ <- token . symbol $ "."
-        s <- symbol "\"" <|> symbol ""
+        _ <- symbol "\""
         i <- identifier
-        _ <- (if s == "\"" then symbol "\"" else symbol "")
+        _ <- symbol "\""
+        return i
+      )
+    q <- many (symbol "?")
+    if length is == 1 then
+      if null q then return (Identifier (head is)) else return (OptIdentifier (head is))
+    else
+      return (getPipeIdentifier is)
+  <|>
+  do
+    is <- some (
+      do
+        _ <- char $ '.'
+        i <- ident
         return i
       )
     q <- many (symbol "?")
@@ -152,6 +165,21 @@ parseGroup =
     _ <- symbol ")"
     return (Group g)
 
+parseTryCatch :: Parser Filter
+parseTryCatch = 
+  do
+    _ <- symbol $ "try"
+    t <- parseFilter
+    c <- 
+      do
+        _ <- symbol "catch"
+        c <- parseFilter
+        return (TryCatch t c)
+      <|>
+      do
+        return (TryCatch t EmptyCatch)
+    return (TryCatch t c)
+
 parseFilter :: Parser Filter
 parseFilter = parsePipe
   <|> parseComma
@@ -167,6 +195,7 @@ parseSingleFilter = parseSlice
         return (createPipe fs)
   <|> parseIdentity
   <|> parseGroup
+  <|> parseTryCatch
 
 createPipe :: [Filter] -> Filter
 createPipe []     = Identity 
