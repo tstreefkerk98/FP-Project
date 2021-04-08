@@ -67,12 +67,6 @@ parseIterator =
     q <- many (symbol "?")
     if null q then return (IteratorJObject (is ++ [t])) else return (OptIteratorJObject (is ++ [t]))
 
--- parseOption :: Parser Filter
--- parseOption = 
---   do
---     q <- many (symbol "?")
---     if null q then return (Option False) else return (Option True)
-
 getPipeIdentifier :: [String] -> Filter 
 getPipeIdentifier []     = Identity 
 getPipeIdentifier [i]    = Identifier i
@@ -116,6 +110,10 @@ parseValueConsArray =
     l <- parseFilter
     _ <- symbol "]"
     return (ValueConsArray (is ++ [l]))
+  <|>
+  do
+    _ <- token . symbol $ "[]"
+    return (ValueConsArray [])
 
 parseValueConsObject :: Parser Filter 
 parseValueConsObject = 
@@ -125,6 +123,14 @@ parseValueConsObject =
     b <- many parseFilter
     _ <- symbol "}"
     return (ValueConsObject (zip a b))
+
+parseGroup :: Parser Filter 
+parseGroup = 
+  do
+    _ <- token . symbol $ "("
+    g <- parseFilter
+    _ <- symbol ")"
+    return (Group g)
 
 parseFilter :: Parser Filter
 parseFilter = parsePipe
@@ -137,9 +143,10 @@ parseFilter = parsePipe
 parseSingleFilter :: Parser Filter
 parseSingleFilter = parseSlice
   <|> do 
-        fs <- many (parseIterator <|> parseExtraFilters)
+        fs <- some (parseIterator <|> parseExtraFilters)
         return (createPipe fs)
   <|> parseIdentity
+  <|> parseGroup
 
 createPipe :: [Filter] -> Filter
 createPipe []     = Identity 

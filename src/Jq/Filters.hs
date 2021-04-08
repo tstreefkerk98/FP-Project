@@ -17,6 +17,7 @@ data Filter = Identity
   | ValueCons JSON
   | ValueConsArray [Filter]
   | ValueConsObject [(String, Filter)]
+  | Group Filter
 
 instance Show Filter where
   show Identity                = "."
@@ -35,5 +36,6 @@ instance Show Filter where
   show (ValueCons j)           = show j
   show (ValueConsArray fs)     = show fs
   show (ValueConsObject fs)    = show fs
+  show (Group f)               = show f
 
 data Config = ConfigC {filters :: Filter}

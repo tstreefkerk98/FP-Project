@@ -23,11 +23,13 @@ compile (PipeOperator l r)      obj = compilePipeOperator (PipeOperator l r) [ob
 compile (ValueCons json)        _   = compileValueCons json
 compile (ValueConsArray fs)     obj = compileValueConsArray fs obj
 compile (ValueConsObject fs)    obj = compileValueConsObject fs obj
+compile (Group g)               obj = compileGroup g obj
 
 compileIdentifier :: String -> JSON -> Bool -> Either String [JSON]
 compileIdentifier i (JObject obj) _ = if not (null f) then Right [snd (head f)] else Right [JNull]
     where f = filter ((==i).fst) obj
-compileIdentifier _ _         True  = Right [JNull]
+compileIdentifier _ JNull     True  = Right [JNull]
+compileIdentifier _ _         True  = Right []
 compileIdentifier _ obj       False = Left ("Cannot apply identifier to " ++ getJqType obj)
 
 compileSlice :: (Int, Int) -> JSON -> Bool -> Either String [JSON]
@@ -62,8 +64,12 @@ compileIteratorJArray _  obj      False = Left ("Cannot apply JArray iterator to
 
 compileIteratorJObject :: [String] -> JSON -> Bool -> Either String [JSON]
 compileIteratorJObject [] (JObject obj) _ = Right (map snd obj)
-compileIteratorJObject is (JObject obj) _ = Right [ snd o | o <- obj , fst o `elem` is ]
-compileIteratorJObject _  _         True  = Right [JNull]
+compileIteratorJObject is (JObject obj) _ = Right (concat [ getValue i | i <- is ])
+    where 
+        list = map fst obj
+        getValue i = if i `elem` list then find i else [JNull]
+        find i = map snd (filter ((==i).fst) obj)
+compileIteratorJObject _  _         True  = Right []
 compileIteratorJObject _  obj       False = Left ("Cannot apply JObject iterator to " ++ getJqType obj)
 
 compileCommaOperator :: Filter -> JSON -> Either String [JSON]
@@ -105,7 +111,8 @@ compileValueConsObject fs obj =
         let xs = zip ss (concat js)
         return [JObject xs]
 
-
+compileGroup :: Filter -> JSON -> Either String [JSON]
+compileGroup g obj = compile g obj
 
 getIndex :: Int -> Int -> Int
 getIndex size i = if i < 0 then size + i else i
