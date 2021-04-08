@@ -80,6 +80,12 @@ escapeChar = sat isEscapeChar
 isEscapeChar :: Char -> Bool
 isEscapeChar c = c `elem` ['r', 'n', 't', 'b', 'f', '\"']
 
+unicodeChar :: Parser Char 
+unicodeChar = sat isUnicodeChar
+
+isUnicodeChar :: Char -> Bool 
+isUnicodeChar c = c `elem` ['a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F']
+
 validChar :: Parser Char 
 validChar = sat isValidChar
 
@@ -91,6 +97,19 @@ parseString =
    do 
       _ <- symbol "\""
       t <- many (
+         do
+            c <- char '\\' *> char 'u'
+            c0 <- digit <|> unicodeChar
+            c1 <- digit <|> unicodeChar
+            c2 <- digit <|> unicodeChar
+            c3 <- digit <|> unicodeChar
+            let n0 = digitToInt c0
+            let n1 = digitToInt c1
+            let n2 = digitToInt c2
+            let n3 = digitToInt c3
+            let sum = 16 * n3 + 16^2 * n2 + 16^3 * n1 + 16^4 * n0
+            return [chr sum]
+         <|>   
          do
             c <- char '\\' *> escapeChar
             return ['\\', c]
