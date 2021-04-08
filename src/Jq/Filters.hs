@@ -16,7 +16,7 @@ data Filter = Identity
   | PipeOperator Filter Filter
   | ValueCons JSON
   | ValueConsArray [Filter]
-  | ValueConsObject [(String, Filter)]
+  | ValueConsObject [(Filter, Filter)]
   | Group Filter
 
 instance Show Filter where

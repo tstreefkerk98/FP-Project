@@ -3,6 +3,7 @@ module Jq.CParser where
 import Parsing.Parsing
 import Jq.Filters
 import Jq.JParser
+import Jq.Json
 
 parseSlice :: Parser Filter 
 parseSlice = 
@@ -118,11 +119,30 @@ parseValueConsArray =
 parseValueConsObject :: Parser Filter 
 parseValueConsObject = 
   do
+    _ <- token . symbol $ "{}"
+    return (ValueConsObject [])
+  <|>
+  do
     _ <- token . symbol $ "{"
-    a <- many (identifier <* symbol ":")
-    b <- many parseFilter
+    ts <- some (
+      do
+        g <- 
+          do parseGroup <* symbol ":"
+          <|>
+          do
+            g' <- (parseString <|> identifier) <* symbol ":"
+            return (ValueCons (JString g'))
+        f <- parseFilter
+        _ <- many (symbol ",")
+        return (g, f)
+      <|>
+      do
+        g <- parseString <|> identifier
+        _ <- many (symbol ",")
+        return (ValueCons (JString g), Identifier g)
+      )
     _ <- symbol "}"
-    return (ValueConsObject (zip a b))
+    return (ValueConsObject ts)
 
 parseGroup :: Parser Filter 
 parseGroup = 

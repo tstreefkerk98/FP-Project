@@ -1,9 +1,9 @@
 module Jq.JParser where
 
 import Parsing.Parsing
-import Jq.Json
 
 import Prelude
+import Jq.Json
 
 parseJNull :: Parser JSON
 parseJNull = do _ <- string "null"
@@ -20,12 +20,7 @@ parseJBool =
         return (JBool False)
 
 parseJString :: Parser JSON 
-parseJString = 
-    do
-        _ <- symbol "\""
-        s <- many (alphanum <|> char ' ' <|> (char '\\' *> char '"') <|> char '\\')
-        _ <- symbol "\""
-        return (JString s)
+parseJString = do JString <$> parseString
 
 parseJNumber :: Parser JSON
 parseJNumber = 
@@ -86,14 +81,14 @@ parseJObject =
         _ <- symbol "{"
         p <- many $
             do 
-                k <- symbol "\"" *> identifier <* symbol "\""
+                k <- parseString
                 _ <- symbol ":"
                 v <- parseJSON
                 _ <- symbol ","
                 return (k, v)
         l <- some $ 
             do
-                k <- symbol "\"" *> identifier <* symbol "\""
+                k <- parseString
                 _ <- symbol ":"
                 v <- parseJSON
                 return (k, v)

@@ -103,13 +103,25 @@ compileValueConsArray fs obj =
         is <- mapM (`compile` obj) fs
         return [JArray (concat is)]
 
-compileValueConsObject :: [(String, Filter)] -> JSON -> Either String [JSON]
+compileValueConsObject :: [(Filter, Filter)] -> JSON -> Either String [JSON]
 compileValueConsObject fs obj = 
     do
-        let ss = map fst fs
-        js <- mapM ((`compile` obj) . snd) fs
-        let xs = zip ss (concat js)
-        return [JObject xs]
+        is <- mapM ((`compile` obj) . fst) fs
+        let ks = getKeys (concat is)
+        if length ks /= length ks then
+            do return [JNull]
+        else
+            do
+                js <- mapM ((`compile` obj) . snd) fs
+                let xs = zip ks (concat js)
+                return [JObject xs]
+
+
+getKeys :: [JSON] -> [String]
+getKeys []          = []
+getKeys [JString i] = [i]
+getKeys [_]         = []
+getKeys (i:is)      = getKeys [i] ++ getKeys is 
 
 compileGroup :: Filter -> JSON -> Either String [JSON]
 compileGroup g obj = compile g obj

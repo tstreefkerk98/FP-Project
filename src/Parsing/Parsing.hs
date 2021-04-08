@@ -74,6 +74,20 @@ letter = sat isAlpha
 alphanum :: Parser Char
 alphanum = sat isAlphaNum
 
+validChar :: Parser Char 
+validChar = sat isValidChar
+
+isValidChar :: Char -> Bool
+isValidChar c = c `elem` "!@#$%^&*()_+1234567890-="
+
+parseString :: Parser String 
+parseString = 
+   do 
+      _ <- symbol "\""
+      s <- many (validChar <|> alphanum <|> char ' ' <|> (char '\\' *> char '"') <|> char '\\')
+      _ <- symbol "\""
+      return s
+
 char :: Char -> Parser Char
 char x = sat (== x)
 
