@@ -2,6 +2,18 @@
 # Blank lines and lines starting with # are ignored
 
 #
+# Unicode
+#
+
+.
+"\u2600"
+\"\9728\"\n
+
+.
+"Aa\r\n\t\b\f"
+\"Aa\\r\\n\\t\\b\\f\"\n
+
+#
 # Simple value tests to check parser. Input is irrelevant
 #
 

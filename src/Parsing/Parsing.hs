@@ -74,6 +74,12 @@ letter = sat isAlpha
 alphanum :: Parser Char
 alphanum = sat isAlphaNum
 
+escapeChar :: Parser Char 
+escapeChar = sat isEscapeChar
+
+isEscapeChar :: Char -> Bool 
+isEscapeChar c = c `elem` ['r', 'n', 't', 'b', 'f', '\"']
+
 validChar :: Parser Char 
 validChar = sat isValidChar
 
@@ -84,9 +90,25 @@ parseString :: Parser String
 parseString = 
    do 
       _ <- symbol "\""
-      s <- many (validChar <|> alphanum <|> char ' ' <|> (char '\\' *> char '"') <|> char '\\')
+      t <- many (
+         do
+            c <- char '\\' *> escapeChar
+            return ['\\', c]
+         <|>
+         do 
+            c <- validChar
+            return [c]
+         <|>
+         do 
+            c <- alphanum
+            return [c]
+         <|>
+         do 
+            c <- char ' '
+            return [c]
+         )
       _ <- symbol "\""
-      return s
+      return (concat t)
 
 char :: Char -> Parser Char
 char x = sat (== x)
