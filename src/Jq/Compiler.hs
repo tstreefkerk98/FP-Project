@@ -41,6 +41,7 @@ compileSlice (l, r) (JString s) _ = Right [JString (take (r' - l') (drop l' s))]
         size = length s
         r' = getIndex size r
         l' = getIndex size l
+compileSlice _      JNull   _     = Right [JNull]        
 compileSlice _      _       True  = Right []
 compileSlice _      obj     False = Left ("Cannot apply slice to " ++ getJqType obj)
 

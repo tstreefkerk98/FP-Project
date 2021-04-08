@@ -4,38 +4,6 @@ import Parsing.Parsing
 import Jq.Filters
 import Jq.JParser
 
--- parseIdentifier :: Parser Filter 
--- parseIdentifier =
-  -- do 
-  --   is <- some (
-  --     do
-  --       _ <- token . symbol $ "."
-  --       s <- symbol "[\"" <|> symbol "\"" <|> symbol ""
-  --       i <- identifier
-  --       _ <- (if s == "[\"" then symbol "\"]" else if s == "\"" then symbol "\"" else symbol "")
-  --       return i
-  --     )
-  --   q <- many (symbol "?")
-  --   if length is == 1 then
-  --     if null q then return (Identifier (head is)) else return (OptIdentifier (head is))
-  --   else
-  --     return (getPipe is)
-  -- <|>
-  -- do
-  --   _ <- token . symbol $ "."
-  --   i <- identifier
-  --   is <- many (symbol "." *> identifier)
-  --   q <- many (symbol "?")
-  --   if null is then
-  --     if null q then return (Identifier i) else return (OptIdentifier i)
-  --   else
-  --     return (getPipe (i:is))
-
-getPipe :: [String] -> Filter 
-getPipe []     = Identity 
-getPipe [i]    = Identifier i
-getPipe (i:is) = PipeOperator (Identifier i) (getPipe is)
-
 parseSlice :: Parser Filter 
 parseSlice = 
   do
@@ -57,15 +25,8 @@ parseIterator =
           i <- identifier
           _ <- symbol "\"]"
           return i
-    -- ts <- many (symbol "[]")
     q <- many (symbol "?")
-    -- if null ts then
     if null q then return (Identifier il) else return (OptIdentifier il)
-    -- else
-      -- if length ts == 1 then
-        -- return (PipeOperator (Identifier il) Iterator)
-      -- else
-        -- return (PipeOperator (Identifier il) (PipeOperator Iterator Iterator))
   <|>
   do
     is <- some (
@@ -80,7 +41,7 @@ parseIterator =
     if length is == 1 then
       if null q then return (Identifier (head is)) else return (OptIdentifier (head is))
     else
-      return (getPipe is)
+      return (getPipeIdentifier is)
   <|>
   do
     _ <- token . symbol $ "."
@@ -106,12 +67,26 @@ parseIterator =
     q <- many (symbol "?")
     if null q then return (IteratorJObject (is ++ [t])) else return (OptIteratorJObject (is ++ [t]))
 
-parseComma :: Parser Filter
-parseComma = 
+-- parseOption :: Parser Filter
+-- parseOption = 
+--   do
+--     q <- many (symbol "?")
+--     if null q then return (Option False) else return (Option True)
+
+getPipeIdentifier :: [String] -> Filter 
+getPipeIdentifier []     = Identity 
+getPipeIdentifier [i]    = Identifier i
+getPipeIdentifier (i:is) = PipeOperator (Identifier i) (getPipeIdentifier is)
+
+parseExtraFilters :: Parser Filter
+parseExtraFilters = 
   do
-    l <- token $ parseSingleFilter
-    r <- symbol "," *> parseFilter
-    return (CommaOperator l r)
+    _ <-symbol "[]"
+    return Iterator 
+
+getPipeIterator :: [String] -> Filter 
+getPipeIterator []      = Identity 
+getPipeIterator (_:is)  = PipeOperator Iterator (getPipeIterator is)
 
 parsePipe :: Parser Filter 
 parsePipe = 
@@ -119,6 +94,13 @@ parsePipe =
     l <- token $ parseSingleFilter
     r <- symbol "|" *> parseFilter
     return (PipeOperator l r)
+
+parseComma :: Parser Filter
+parseComma = 
+  do
+    l <- token $ parseSingleFilter
+    r <- symbol "," *> parseFilter
+    return (CommaOperator l r)
 
 parseIdentity :: Parser Filter
 parseIdentity = 
@@ -145,17 +127,23 @@ parseValueConsObject =
     return (ValueConsObject (zip a b))
 
 parseFilter :: Parser Filter
-parseFilter = do ValueCons <$> parseSingleJSON
+parseFilter = parsePipe
+  <|> parseComma
   <|> parseValueConsArray
   <|> parseValueConsObject
-  <|> parsePipe
-  <|> parseComma
-  <|> parseSingleFilter
+  <|> do ValueCons <$> parseSingleJSON
+  <|> parseSingleFilter 
 
 parseSingleFilter :: Parser Filter
 parseSingleFilter = parseSlice
-  <|> parseIterator
+  <|> do 
+        fs <- many (parseIterator <|> parseExtraFilters)
+        return (createPipe fs)
   <|> parseIdentity
+
+createPipe :: [Filter] -> Filter
+createPipe []     = Identity 
+createPipe (f:fs) = PipeOperator f (createPipe fs)
 
 parseConfig :: [String] -> Either String Config
 parseConfig s = case s of
