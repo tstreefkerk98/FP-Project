@@ -22,7 +22,7 @@ showJSON _ [JObject []] = "{}"
 showJSON i [JObject ns] = "{\n" ++ showObject (i + 1) ns ++ "\n" ++ getIndent i ++ "}"
   where
     showObject _ []       = []
-    showObject j [(k, v)] = getIndent j ++ show k ++ ": " ++ showJSON j [v]
+    showObject j [(k, v)] = getIndent j ++ "\"" ++ k ++ "\"" ++ ": " ++ showJSON j [v]
     showObject j (x:xs)   = showObject j [x] ++ ",\n" ++ showObject j xs
 showJSON _ [JArray []]  = "[]"
 showJSON i [JArray ns]  = "[\n" ++ showArray (i + 1) ns ++ "\n" ++ getIndent i ++ "]"
