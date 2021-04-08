@@ -116,7 +116,6 @@ compileValueConsObject fs obj =
                 let xs = zip ks (concat js)
                 return [JObject xs]
 
-
 getKeys :: [JSON] -> [String]
 getKeys []          = []
 getKeys [JString i] = [i]
