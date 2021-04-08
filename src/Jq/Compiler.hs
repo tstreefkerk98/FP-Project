@@ -110,7 +110,7 @@ compileValueConsObject fs obj =
     do
         is <- mapM ((`compile` obj) . fst) fs
         let ks = getKeys (concat is)
-        if length ks /= length ks then
+        if length is /= length ks then
             do return [JNull]
         else
             do
