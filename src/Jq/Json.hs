@@ -13,7 +13,7 @@ instance Show JSON where
 
 showJSON :: Int -> [JSON] -> String
 showJSON _ []           = []
-showJSON _ [JString n]  = show n
+showJSON _ [JString n]  = "\"" ++ n ++ "\""
 showJSON _ [JNumber n]  = if n - fromIntegral r == 0 then show r else show n
   where r = round n
 showJSON _ [JBool n]    = if n then "true" else "false"

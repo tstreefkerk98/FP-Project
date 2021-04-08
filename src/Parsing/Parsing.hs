@@ -77,7 +77,7 @@ alphanum = sat isAlphaNum
 escapeChar :: Parser Char 
 escapeChar = sat isEscapeChar
 
-isEscapeChar :: Char -> Bool 
+isEscapeChar :: Char -> Bool
 isEscapeChar c = c `elem` ['r', 'n', 't', 'b', 'f', '\"']
 
 validChar :: Parser Char 
