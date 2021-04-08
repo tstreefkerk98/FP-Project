@@ -107,7 +107,7 @@ parseString =
             let n1 = digitToInt c1
             let n2 = digitToInt c2
             let n3 = digitToInt c3
-            let sum = 16 * n3 + 16^2 * n2 + 16^3 * n1 + 16^4 * n0
+            let sum = n0 * 16^3 + n1 * 16^2 + n2 * 16 + n3
             return [chr sum]
          <|>   
          do
